@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/rendering.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:mycomic/domain/comic_model.dart';
 import 'package:mycomic/domain/rank_model.dart';
@@ -55,6 +54,26 @@ class HomeModel {
       historicalRanking: RankModel.listFromCell(rankingCells[3]),
       recentUpdates: ComicModel.listFromElement(modules[3]),
       latestReleases: ComicModel.listFromElement(modules[4]),
+    );
+  }
+
+  factory HomeModel.fromMap(Map<String, dynamic> map) {
+    List<ComicModel> comics(String key) => (map[key] as List<dynamic>? ?? [])
+        .map((item) => ComicModel.fromMap(item as Map<String, dynamic>))
+        .toList();
+    List<RankModel> ranks(String key) => (map[key] as List<dynamic>? ?? [])
+        .map((item) => RankModel.fromMap(item as Map<String, dynamic>))
+        .toList();
+
+    return HomeModel(
+      popular: comics('popular'),
+      recommended: comics('recommended'),
+      recentRanking: ranks('recentRanking'),
+      dailyRanking: ranks('dailyRanking'),
+      weeklyRanking: ranks('weeklyRanking'),
+      historicalRanking: ranks('historicalRanking'),
+      recentUpdates: comics('recentUpdates'),
+      latestReleases: comics('latestReleases'),
     );
   }
 

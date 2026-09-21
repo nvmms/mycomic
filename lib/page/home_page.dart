@@ -39,13 +39,15 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(onPressed: () {}, icon: Icon(Icons.search)),
-          IconButton(
-            tooltip: _filtersVisible ? '收起筛选' : '展开筛选',
-            onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
-            icon: Icon(
-              _filtersVisible ? Icons.filter_alt_off : Icons.filter_alt,
+          if (currentIndex == 1 || currentIndex == 2)
+            IconButton(
+              tooltip: _filtersVisible ? '收起筛选' : '展开筛选',
+              onPressed: () =>
+                  setState(() => _filtersVisible = !_filtersVisible),
+              icon: Icon(
+                _filtersVisible ? Icons.filter_alt_off : Icons.filter_alt,
+              ),
             ),
-          ),
         ],
       ),
       body: PageView(

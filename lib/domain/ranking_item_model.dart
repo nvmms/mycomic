@@ -43,6 +43,32 @@ class RankingItemModel {
     );
   }
 
+  factory RankingItemModel.fromMap(Map<String, dynamic> map) {
+    return RankingItemModel(
+      rank: map['rank'] as int? ?? 0,
+      title: map['title'] as String? ?? '',
+      url: map['url'] as String? ?? '',
+      authors: map['authors'] as String? ?? '',
+      chapter: map['chapter'] as String? ?? '',
+      chapterUrl: map['chapterUrl'] as String? ?? '',
+      updatedAt: map['updatedAt'] as String? ?? '',
+      score: map['score'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'rank': rank,
+      'title': title,
+      'url': url,
+      'authors': authors,
+      'chapter': chapter,
+      'chapterUrl': chapterUrl,
+      'updatedAt': updatedAt,
+      'score': score,
+    };
+  }
+
   static List<RankingItemModel> listFromHtml(String html) {
     final document = html_parser.parse(html);
     return document

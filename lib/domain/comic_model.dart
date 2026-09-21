@@ -52,6 +52,15 @@ class ComicModel {
     return ComicModel(title: title, cover: cover, label: label, url: url);
   }
 
+  factory ComicModel.fromMap(Map<String, dynamic> map) {
+    return ComicModel(
+      title: map['title'] as String? ?? '',
+      cover: map['cover'] as String? ?? '',
+      label: map['label'] as String? ?? '',
+      url: map['url'] as String? ?? '',
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {'title': title, 'cover': cover, 'label': label, 'url': url};
   }

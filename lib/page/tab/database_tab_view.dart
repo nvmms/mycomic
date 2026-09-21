@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mycomic/domain/comic_model.dart';
 import 'package:mycomic/service/api.dart';
+import 'package:mycomic/service/data_cache.dart';
 import 'package:mycomic/widget/comic_grid.dart';
 import 'package:mycomic/widget/comic_filter_panel.dart';
 
@@ -30,7 +31,7 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
       _selectedValues[group.queryKey] = null;
     }
     _scrollController.addListener(_onScroll);
-    _reload();
+    _load();
   }
 
   @override
@@ -62,12 +63,32 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
     );
   }
 
-  Future<void> _reload() async {
+  String get _cacheKey =>
+      'database_${Uri.encodeComponent(_buildUri(1).toString())}';
+
+  Future<void> _load({bool forceRefresh = false}) async {
     final generation = ++_requestGeneration;
+    if (!forceRefresh) {
+      final cached = await DataCache.read(_cacheKey);
+      if (!mounted || generation != _requestGeneration) return;
+      if (cached != null) {
+        final values = (cached['items'] as List<dynamic>? ?? [])
+            .map((item) => ComicModel.fromMap(item as Map<String, dynamic>))
+            .toList();
+        setState(() {
+          _comics
+            ..clear()
+            ..addAll(values);
+          _page = cached['page'] as int? ?? 1;
+          _hasMore = cached['hasMore'] as bool? ?? true;
+          _isLoading = false;
+          _error = null;
+        });
+        return;
+      }
+    }
     setState(() {
-      _comics.clear();
-      _page = 1;
-      _hasMore = true;
+      if (!forceRefresh) _comics.clear();
       _isLoading = true;
       _error = null;
     });
@@ -76,10 +97,14 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
       final items = await Api.comics(_buildUri(1));
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
-        _comics.addAll(items);
+        _comics
+          ..clear()
+          ..addAll(items);
+        _page = 1;
         _hasMore = items.isNotEmpty;
         _isLoading = false;
       });
+      await _saveCache();
     } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
@@ -108,6 +133,7 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
         _hasMore = items.isNotEmpty && newItems.isNotEmpty;
         _isLoading = false;
       });
+      await _saveCache();
     } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
@@ -120,14 +146,22 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
   void _selectFilter(ComicFilterGroup group, String? value) {
     if (_selectedValues[group.queryKey] == value) return;
     _selectedValues[group.queryKey] = value;
-    _reload();
+    _load();
+  }
+
+  Future<void> _saveCache() {
+    return DataCache.write(_cacheKey, {
+      'items': _comics.map((comic) => comic.toMap()).toList(),
+      'page': _page,
+      'hasMore': _hasMore,
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _reload,
+        onRefresh: () => _load(forceRefresh: true),
         child: CustomScrollView(
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
@@ -155,7 +189,10 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
             if (_comics.isEmpty && !_isLoading)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _EmptyState(error: _error, onRetry: _reload),
+                child: _EmptyState(
+                  error: _error,
+                  onRetry: () => _load(forceRefresh: true),
+                ),
               ),
             if (_comics.isNotEmpty)
               SliverToBoxAdapter(

@@ -32,6 +32,16 @@ class RankModel {
     );
   }
 
+  factory RankModel.fromMap(Map<String, dynamic> map) {
+    return RankModel(
+      title: map['title'] as String? ?? '',
+      url: map['url'] as String? ?? '',
+      chapter: map['chapter'] as String? ?? '',
+      chapterUrl: map['chapterUrl'] as String? ?? '',
+      date: map['date'] as String? ?? '',
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,

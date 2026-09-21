@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/ranking_item_model.dart';
 import 'package:mycomic/service/api.dart';
+import 'package:mycomic/service/data_cache.dart';
 import 'package:mycomic/widget/comic_filter_panel.dart';
 
 class RankingTabView extends StatefulWidget {
@@ -25,7 +26,7 @@ class _RankingTabViewState extends State<RankingTabView> {
     for (final group in rankingFilterGroups) {
       _selectedValues[group.queryKey] = null;
     }
-    _reload();
+    _load();
   }
 
   Uri _buildUri() {
@@ -40,8 +41,27 @@ class _RankingTabViewState extends State<RankingTabView> {
     );
   }
 
-  Future<void> _reload() async {
+  String get _cacheKey =>
+      'ranking_${Uri.encodeComponent(_buildUri().toString())}';
+
+  Future<void> _load({bool forceRefresh = false}) async {
     final generation = ++_requestGeneration;
+    if (!forceRefresh) {
+      final cached = await DataCache.read(_cacheKey);
+      if (!mounted || generation != _requestGeneration) return;
+      if (cached != null) {
+        final values = (cached['items'] as List<dynamic>? ?? [])
+            .map(
+              (item) => RankingItemModel.fromMap(item as Map<String, dynamic>),
+            )
+            .toList();
+        setState(() {
+          _items = values;
+          _error = null;
+        });
+        return;
+      }
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -52,6 +72,9 @@ class _RankingTabViewState extends State<RankingTabView> {
       setState(() {
         _items = items;
         _isLoading = false;
+      });
+      await DataCache.write(_cacheKey, {
+        'items': items.map((item) => item.toMap()).toList(),
       });
     } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
@@ -65,14 +88,14 @@ class _RankingTabViewState extends State<RankingTabView> {
   void _selectFilter(ComicFilterGroup group, String? value) {
     if (_selectedValues[group.queryKey] == value) return;
     _selectedValues[group.queryKey] = value;
-    _reload();
+    _load();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _reload,
+        onRefresh: () => _load(forceRefresh: true),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -108,7 +131,10 @@ class _RankingTabViewState extends State<RankingTabView> {
             if (_items.isEmpty && !_isLoading)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _RankingEmptyState(error: _error, onRetry: _reload),
+                child: _RankingEmptyState(
+                  error: _error,
+                  onRetry: () => _load(forceRefresh: true),
+                ),
               ),
           ],
         ),
