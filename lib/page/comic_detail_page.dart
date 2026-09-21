@@ -16,7 +16,6 @@ class ComicDetailPage extends StatefulWidget {
 
 class _ComicDetailPageState extends State<ComicDetailPage> {
   late Future<ComicDetailModel> _detail;
-  final Set<int> _ascendingGroups = {};
   bool _isFollowing = false;
   LocalComicRecord? _historyRecord;
 
@@ -77,12 +76,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
             historyRecord: _historyRecord,
             onHistoryChanged: _loadLocalState,
             onToggleFollowing: () => _toggleFollowing(snapshot.requireData),
-            ascendingGroups: _ascendingGroups,
-            onSort: (index) => setState(() {
-              if (!_ascendingGroups.add(index)) {
-                _ascendingGroups.remove(index);
-              }
-            }),
           );
         },
       ),
@@ -97,8 +90,6 @@ class _DetailBody extends StatelessWidget {
   final LocalComicRecord? historyRecord;
   final VoidCallback onHistoryChanged;
   final VoidCallback onToggleFollowing;
-  final Set<int> ascendingGroups;
-  final ValueChanged<int> onSort;
 
   const _DetailBody({
     required this.detail,
@@ -107,8 +98,6 @@ class _DetailBody extends StatelessWidget {
     required this.historyRecord,
     required this.onHistoryChanged,
     required this.onToggleFollowing,
-    required this.ascendingGroups,
-    required this.onSort,
   });
 
   @override
@@ -138,15 +127,10 @@ class _DetailBody extends StatelessWidget {
           )
         else
           ...detail.chapterGroups.indexed.map((entry) {
-            final (index, group) = entry;
-            final ascending = ascendingGroups.contains(index);
-            final chapters = ascending
-                ? group.chapters.reversed.toList()
-                : group.chapters;
+            final (_, group) = entry;
+            final chapters = group.chapters.reversed.toList();
             return _ChapterGroupPreview(
               group: ComicChapterGroup(title: group.title, chapters: chapters),
-              ascending: ascending,
-              onSort: () => onSort(index),
               onShowAll: () => _showAllChapters(
                 context,
                 group.title,
@@ -225,59 +209,89 @@ class _DetailBody extends StatelessWidget {
     String comicUrl,
     String cover,
   ) {
+    final pageContext = context;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.sizeOf(sheetContext).height * .72,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                child: Text(
-                  '$groupTitle(${chapters.length})',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
+      builder: (sheetContext) {
+        var ascending = true;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final visibleChapters = ascending
+                ? chapters
+                : chapters.reversed.toList();
+            return SafeArea(
+              child: SizedBox(
+                height: MediaQuery.sizeOf(sheetContext).height * .72,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '$groupTitle(${chapters.length})',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () =>
+                                setSheetState(() => ascending = !ascending),
+                            icon: Icon(
+                              ascending
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
+                              size: 15,
+                            ),
+                            label: Text(ascending ? '正序' : '倒序'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: visibleChapters.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              mainAxisExtent: 42,
+                            ),
+                        itemBuilder: (context, index) => _ChapterButton(
+                          title: visibleChapters[index].title,
+                          onPressed: () async {
+                            final chapter = visibleChapters[index];
+                            Navigator.pop(sheetContext);
+                            await AppNavigator.startComicPlay(
+                              pageContext,
+                              chapter.url,
+                              title,
+                              group,
+                              comicUrl,
+                              cover,
+                            );
+                            onHistoryChanged();
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: chapters.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    mainAxisExtent: 42,
-                  ),
-                  itemBuilder: (context, index) => _ChapterButton(
-                    title: chapters[index].title,
-                    onPressed: () async {
-                      Navigator.pop(sheetContext);
-                      await AppNavigator.startComicPlay(
-                        context,
-                        chapters[index].url,
-                        title,
-                        group,
-                        comicUrl,
-                        cover,
-                      );
-                      onHistoryChanged();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -388,8 +402,6 @@ class _ComicMetadata extends StatelessWidget {
 
 class _ChapterGroupPreview extends StatelessWidget {
   final ComicChapterGroup group;
-  final bool ascending;
-  final VoidCallback onSort;
   final VoidCallback onShowAll;
   final String title;
   final String comicUrl;
@@ -398,8 +410,6 @@ class _ChapterGroupPreview extends StatelessWidget {
 
   const _ChapterGroupPreview({
     required this.group,
-    required this.ascending,
-    required this.onSort,
     required this.onShowAll,
     required this.title,
     required this.comicUrl,
@@ -423,22 +433,6 @@ class _ChapterGroupPreview extends StatelessWidget {
                   fontSize: 14,
                   color: Color(0xff444444),
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: onSort,
-                iconAlignment: IconAlignment.end,
-                icon: Icon(
-                  ascending ? Icons.arrow_downward : Icons.arrow_upward,
-                  size: 14,
-                ),
-                label: Text(ascending ? '降序' : '升序'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xff8b8b8b),
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(52, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],
