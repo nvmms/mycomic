@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mycomic/page/tab/database_tab_view.dart';
 import 'package:mycomic/page/tab/home_tab_view.dart';
 import 'package:mycomic/page/tab/ranking_tab_view.dart';
+import 'package:mycomic/core/app_navigator.dart';
+import 'package:mycomic/page/comic_library_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -67,15 +69,30 @@ class _HomePageState extends State<HomePage> {
             const DrawerHeader(
               decoration: BoxDecoration(color: Colors.blue),
               child: Text(
-                '观看历史',
+                '我的漫画',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('我的收藏'),
+              leading: const Icon(Icons.history),
+              title: const Text('阅读记录'),
               onTap: () {
                 Navigator.pop(context);
+                AppNavigator.startComicLibrary(
+                  context,
+                  ComicLibraryType.history,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_outline),
+              title: const Text('我的追漫'),
+              onTap: () {
+                Navigator.pop(context);
+                AppNavigator.startComicLibrary(
+                  context,
+                  ComicLibraryType.following,
+                );
               },
             ),
             ListTile(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/comic_detail_model.dart';
+import 'package:mycomic/domain/local_comic_record.dart';
 import 'package:mycomic/service/api.dart';
+import 'package:mycomic/service/comic_library.dart';
 import 'package:mycomic/widget/my_comic_image.dart';
 
 class ComicDetailPage extends StatefulWidget {
@@ -15,11 +17,44 @@ class ComicDetailPage extends StatefulWidget {
 class _ComicDetailPageState extends State<ComicDetailPage> {
   late Future<ComicDetailModel> _detail;
   final Set<int> _ascendingGroups = {};
+  bool _isFollowing = false;
+  LocalComicRecord? _historyRecord;
 
   @override
   void initState() {
     super.initState();
     _detail = Api.comicDetail(widget.id);
+    _loadLocalState();
+  }
+
+  Future<void> _loadLocalState() async {
+    final following = await ComicLibrary.isFollowing(widget.id);
+    final history = await ComicLibrary.history();
+    LocalComicRecord? record;
+    for (final item in history) {
+      if (item.comicUrl == widget.id) {
+        record = item;
+        break;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _isFollowing = following;
+        _historyRecord = record;
+      });
+    }
+  }
+
+  Future<void> _toggleFollowing(ComicDetailModel detail) async {
+    final value = await ComicLibrary.toggleFollowing(
+      LocalComicRecord(
+        title: detail.title,
+        cover: detail.cover,
+        comicUrl: widget.id,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (mounted) setState(() => _isFollowing = value);
   }
 
   void _reload() => setState(() => _detail = Api.comicDetail(widget.id));
@@ -37,6 +72,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           if (snapshot.hasError) return _ErrorView(onRetry: _reload);
           return _DetailBody(
             detail: snapshot.requireData,
+            comicUrl: widget.id,
+            isFollowing: _isFollowing,
+            historyRecord: _historyRecord,
+            onHistoryChanged: _loadLocalState,
+            onToggleFollowing: () => _toggleFollowing(snapshot.requireData),
             ascendingGroups: _ascendingGroups,
             onSort: (index) => setState(() {
               if (!_ascendingGroups.add(index)) {
@@ -52,11 +92,21 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
 class _DetailBody extends StatelessWidget {
   final ComicDetailModel detail;
+  final String comicUrl;
+  final bool isFollowing;
+  final LocalComicRecord? historyRecord;
+  final VoidCallback onHistoryChanged;
+  final VoidCallback onToggleFollowing;
   final Set<int> ascendingGroups;
   final ValueChanged<int> onSort;
 
   const _DetailBody({
     required this.detail,
+    required this.comicUrl,
+    required this.isFollowing,
+    required this.historyRecord,
+    required this.onHistoryChanged,
+    required this.onToggleFollowing,
     required this.ascendingGroups,
     required this.onSort,
   });
@@ -66,7 +116,14 @@ class _DetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
-        _ComicHeader(detail: detail),
+        _ComicHeader(
+          detail: detail,
+          comicUrl: comicUrl,
+          isFollowing: isFollowing,
+          historyRecord: historyRecord,
+          onHistoryChanged: onHistoryChanged,
+          onToggleFollowing: onToggleFollowing,
+        ),
         if (detail.summary.isNotEmpty) ...[
           const SizedBox(height: 12),
           _ExpandableSummary(text: detail.summary),
@@ -96,8 +153,13 @@ class _DetailBody extends StatelessWidget {
                 chapters,
                 detail.title,
                 group,
+                comicUrl,
+                detail.cover,
               ),
               title: detail.title,
+              comicUrl: comicUrl,
+              cover: detail.cover,
+              onHistoryChanged: onHistoryChanged,
             );
           }),
         if (detail.recommendations.isNotEmpty) ...[
@@ -160,6 +222,8 @@ class _DetailBody extends StatelessWidget {
     List<ComicChapter> chapters,
     String title,
     ComicChapterGroup group,
+    String comicUrl,
+    String cover,
   ) {
     showModalBottomSheet<void>(
       context: context,
@@ -195,14 +259,17 @@ class _DetailBody extends StatelessWidget {
                   ),
                   itemBuilder: (context, index) => _ChapterButton(
                     title: chapters[index].title,
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(sheetContext);
-                      AppNavigator.startComicPlay(
+                      await AppNavigator.startComicPlay(
                         context,
                         chapters[index].url,
                         title,
                         group,
+                        comicUrl,
+                        cover,
                       );
+                      onHistoryChanged();
                     },
                   ),
                 ),
@@ -325,6 +392,9 @@ class _ChapterGroupPreview extends StatelessWidget {
   final VoidCallback onSort;
   final VoidCallback onShowAll;
   final String title;
+  final String comicUrl;
+  final String cover;
+  final VoidCallback onHistoryChanged;
 
   const _ChapterGroupPreview({
     required this.group,
@@ -332,6 +402,9 @@ class _ChapterGroupPreview extends StatelessWidget {
     required this.onSort,
     required this.onShowAll,
     required this.title,
+    required this.comicUrl,
+    required this.cover,
+    required this.onHistoryChanged,
   });
 
   @override
@@ -388,12 +461,17 @@ class _ChapterGroupPreview extends StatelessWidget {
               }
               return _ChapterButton(
                 title: visibleChapters[index].title,
-                onPressed: () => AppNavigator.startComicPlay(
-                  context,
-                  visibleChapters[index].url,
-                  title,
-                  group,
-                ),
+                onPressed: () async {
+                  await AppNavigator.startComicPlay(
+                    context,
+                    visibleChapters[index].url,
+                    title,
+                    group,
+                    comicUrl,
+                    cover,
+                  );
+                  onHistoryChanged();
+                },
               );
             },
           ),
@@ -431,7 +509,20 @@ class _ChapterButton extends StatelessWidget {
 
 class _ComicHeader extends StatelessWidget {
   final ComicDetailModel detail;
-  const _ComicHeader({required this.detail});
+  final String comicUrl;
+  final bool isFollowing;
+  final LocalComicRecord? historyRecord;
+  final VoidCallback onHistoryChanged;
+  final VoidCallback onToggleFollowing;
+
+  const _ComicHeader({
+    required this.detail,
+    required this.comicUrl,
+    required this.isFollowing,
+    required this.historyRecord,
+    required this.onHistoryChanged,
+    required this.onToggleFollowing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -477,32 +568,49 @@ class _ComicHeader extends StatelessWidget {
               const SizedBox(height: 7),
               Row(
                 children: [
-                  const Icon(
-                    Icons.star_border_rounded,
-                    color: Color(0xffffa726),
-                    size: 21,
-                  ),
-                  const SizedBox(width: 3),
-                  const Text('追漫', style: TextStyle(fontSize: 13)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: SizedBox(
-                      height: 36,
-                      child: FilledButton(
-                        onPressed: detail.chapters.isEmpty ? null : () {},
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xff55a7f7),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          detail.chapters.isEmpty
-                              ? '暂无章节'
-                              : '看${detail.chapters.length}话',
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                  InkWell(
+                    onTap: onToggleFollowing,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isFollowing
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: const Color(0xffffa726),
+                            size: 21,
+                          ),
+                          const SizedBox(width: 3),
+                          const Text('追漫', style: TextStyle(fontSize: 13)),
+                        ],
                       ),
                     ),
                   ),
+                  if (historyRecord != null &&
+                      historyRecord!.chapterUrl.isNotEmpty) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: FilledButton(
+                          onPressed: () => _resumeReading(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xff55a7f7),
+                            shape: const StadiumBorder(),
+                          ),
+                          child: Text(
+                            _readingButtonText(historyRecord!.chapterTitle),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -510,6 +618,37 @@ class _ComicHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _readingButtonText(String chapterTitle) {
+    if (chapterTitle.isEmpty) return '续看';
+    final title = chapterTitle.trim();
+    return '续看 $title';
+  }
+
+  Future<void> _resumeReading(BuildContext context) async {
+    final record = historyRecord;
+    if (record == null) return;
+    ComicChapterGroup? matchedGroup;
+    for (final group in detail.chapterGroups) {
+      if (group.chapters.any((chapter) => chapter.url == record.chapterUrl)) {
+        matchedGroup = group;
+        break;
+      }
+    }
+    final chapter = ComicChapter(
+      title: record.chapterTitle,
+      url: record.chapterUrl,
+    );
+    await AppNavigator.startComicPlay(
+      context,
+      record.chapterUrl,
+      detail.title,
+      matchedGroup ?? ComicChapterGroup(title: '阅读记录', chapters: [chapter]),
+      comicUrl,
+      detail.cover,
+    );
+    onHistoryChanged();
   }
 }
 

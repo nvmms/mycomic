@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:mycomic/domain/comic_detail_model.dart';
 import 'package:mycomic/domain/comic_play_model.dart';
+import 'package:mycomic/domain/local_comic_record.dart';
 import 'package:mycomic/service/api.dart';
+import 'package:mycomic/service/comic_library.dart';
 import 'package:mycomic/widget/my_comic_image.dart';
 
 class ComicPlayPage extends StatefulWidget {
   final String id;
   final String title;
   final ComicChapterGroup group;
+  final String comicUrl;
+  final String cover;
   const ComicPlayPage({
     super.key,
     required this.id,
     required this.title,
     required this.group,
+    required this.comicUrl,
+    required this.cover,
   });
 
   @override
@@ -62,6 +68,20 @@ class _ComicPlayPage extends State<ComicPlayPage> {
       final chapter = await Api.comicPlay(url);
       if (!mounted) return;
       setState(() => _chapters.add(chapter));
+      try {
+        await ComicLibrary.addHistory(
+          LocalComicRecord(
+            title: widget.title,
+            cover: widget.cover,
+            comicUrl: widget.comicUrl,
+            chapterTitle: _chapterTitle(url, chapter.chapterTitle),
+            chapterUrl: url,
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+      } catch (_) {
+        // 阅读记录写入失败不影响已经加载好的章节。
+      }
     } catch (error) {
       _loadedUrls.remove(url);
       if (!mounted) return;
@@ -74,6 +94,14 @@ class _ComicPlayPage extends State<ComicPlayPage> {
         });
       }
     }
+  }
+
+  String _chapterTitle(String url, String loadedTitle) {
+    if (loadedTitle.isNotEmpty) return loadedTitle;
+    for (final chapter in widget.group.chapters) {
+      if (chapter.url == url) return chapter.title;
+    }
+    return '已阅读章节';
   }
 
   void _loadNextChapter() {
