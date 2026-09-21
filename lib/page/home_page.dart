@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/home_model.dart';
-import 'package:mycomic/service/home.dart';
+import 'package:mycomic/service/api.dart';
 import 'package:mycomic/widget/comic_grid.dart';
 import 'package:mycomic/widget/home_group_title.dart';
 import 'package:mycomic/widget/rank_page_view.dart';
@@ -20,7 +20,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    Home.list().then((value) {
+    Api.homeData().then((value) {
       if (!mounted) return;
       setState(() => homeModel = value);
     });
