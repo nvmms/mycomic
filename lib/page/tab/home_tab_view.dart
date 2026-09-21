@@ -26,21 +26,6 @@ class _HomeTabViewState extends State<HomeTabView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text.rich(
-          TextSpan(
-            style: TextStyle(fontSize: 20),
-            children: [
-              TextSpan(text: "MY"),
-              TextSpan(
-                text: "COMIC",
-                style: TextStyle(color: Color(0xffdc2626)),
-              ),
-            ],
-          ),
-        ),
-        actions: [IconButton(onPressed: () {}, icon: Icon(Icons.search))],
-      ),
       body: Builder(
         builder: (context) {
           if (homeModel == null) {

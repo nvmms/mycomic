@@ -12,6 +12,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
+  bool _filtersVisible = false;
   final PageController controller = PageController();
 
   @override
@@ -23,11 +24,67 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text.rich(
+          TextSpan(
+            style: TextStyle(fontSize: 20),
+            children: [
+              TextSpan(text: "MY"),
+              TextSpan(
+                text: "COMIC",
+                style: TextStyle(color: Color(0xffdc2626)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          IconButton(onPressed: () {}, icon: Icon(Icons.search)),
+          IconButton(
+            tooltip: _filtersVisible ? '收起筛选' : '展开筛选',
+            onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
+            icon: Icon(
+              _filtersVisible ? Icons.filter_alt_off : Icons.filter_alt,
+            ),
+          ),
+        ],
+      ),
       body: PageView(
         controller: controller,
         physics: const NeverScrollableScrollPhysics(),
         onPageChanged: (index) => setState(() => currentIndex = index),
-        children: const [HomeTabView(), DatabaseTabView(), RankingTabView()],
+        children: [
+          HomeTabView(),
+          DatabaseTabView(filtersVisible: currentIndex == 1 && _filtersVisible),
+          RankingTabView(filtersVisible: currentIndex == 2 && _filtersVisible),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blue),
+              child: Text(
+                '观看历史',
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('我的收藏'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('设置'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [

@@ -5,7 +5,8 @@ import 'package:mycomic/service/api.dart';
 import 'package:mycomic/widget/comic_filter_panel.dart';
 
 class RankingTabView extends StatefulWidget {
-  const RankingTabView({super.key});
+  final bool filtersVisible;
+  const RankingTabView({super.key, required this.filtersVisible});
 
   @override
   State<RankingTabView> createState() => _RankingTabViewState();
@@ -14,7 +15,6 @@ class RankingTabView extends StatefulWidget {
 class _RankingTabViewState extends State<RankingTabView> {
   final _selectedValues = <String, String?>{};
   List<RankingItemModel> _items = const [];
-  bool _filtersVisible = true;
   bool _isLoading = false;
   Object? _error;
   int _requestGeneration = 0;
@@ -71,18 +71,6 @@ class _RankingTabViewState extends State<RankingTabView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('漫画排行榜'),
-        actions: [
-          IconButton(
-            tooltip: _filtersVisible ? '收起筛选' : '展开筛选',
-            onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
-            icon: Icon(
-              _filtersVisible ? Icons.filter_alt_off : Icons.filter_alt,
-            ),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: CustomScrollView(
@@ -93,7 +81,7 @@ class _RankingTabViewState extends State<RankingTabView> {
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topCenter,
-                child: _filtersVisible
+                child: widget.filtersVisible
                     ? ComicFilterPanel(
                         groups: rankingFilterGroups,
                         selectedValues: _selectedValues,

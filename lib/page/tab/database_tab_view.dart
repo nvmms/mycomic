@@ -5,7 +5,8 @@ import 'package:mycomic/widget/comic_grid.dart';
 import 'package:mycomic/widget/comic_filter_panel.dart';
 
 class DatabaseTabView extends StatefulWidget {
-  const DatabaseTabView({super.key});
+  final bool filtersVisible;
+  const DatabaseTabView({super.key, required this.filtersVisible});
 
   @override
   State<DatabaseTabView> createState() => _DatabaseTabViewState();
@@ -16,7 +17,6 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
   final _selectedValues = <String, String?>{};
   final _comics = <ComicModel>[];
 
-  bool _filtersVisible = true;
   bool _isLoading = false;
   bool _hasMore = true;
   Object? _error;
@@ -126,18 +126,6 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('漫画资料库'),
-        actions: [
-          IconButton(
-            tooltip: _filtersVisible ? '收起筛选' : '展开筛选',
-            onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
-            icon: Icon(
-              _filtersVisible ? Icons.filter_alt_off : Icons.filter_alt,
-            ),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: CustomScrollView(
@@ -149,7 +137,7 @@ class _DatabaseTabViewState extends State<DatabaseTabView> {
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topCenter,
-                child: _filtersVisible
+                child: widget.filtersVisible
                     ? ComicFilterPanel(
                         groups: databaseFilterGroups,
                         selectedValues: _selectedValues,
