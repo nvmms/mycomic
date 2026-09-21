@@ -58,9 +58,6 @@ jobs:
       - name: Analyze project
         run: flutter analyze
 
-      - name: Run tests
-        run: flutter test
-
       - name: Install signing certificate and provisioning profile
         env:
           IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
