@@ -1,56 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:mycomic/core/app_navigator.dart';
-import 'package:mycomic/domain/home_model.dart';
-import 'package:mycomic/service/api.dart';
-import 'package:mycomic/widget/comic_grid.dart';
-import 'package:mycomic/widget/home_group_title.dart';
-import 'package:mycomic/widget/rank_page_view.dart';
+import 'package:mycomic/page/tab/database_tab_view.dart';
+import 'package:mycomic/page/tab/home_tab_view.dart';
+import 'package:mycomic/page/tab/ranking_tab_view.dart';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<StatefulWidget> createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  HomeModel? homeModel;
+class _HomePageState extends State<HomePage> {
+  int currentIndex = 0;
+  final PageController controller = PageController();
+
   @override
-  void initState() {
-    super.initState();
-    Api.homeData().then((value) {
-      if (!mounted) return;
-      setState(() => homeModel = value);
-    });
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    AppNavigator.context = context;
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(onPressed: () {}, icon: Icon(Icons.menu)),
-        title: Text("MYCOMIC"),
-        actions: [IconButton(onPressed: () {}, icon: Icon(Icons.search))],
+      body: PageView(
+        controller: controller,
+        physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (index) => setState(() => currentIndex = index),
+        children: const [HomeTabView(), DatabaseTabView(), RankingTabView()],
       ),
-      body: Builder(
-        builder: (context) {
-          if (homeModel == null) {
-            return Center(child: Text("加载中..."));
-          }
-          return CustomScrollView(
-            slivers: [
-              ComicGrid(homeModel!.popular),
-              HomeGroupTitle(title: "为您推荐"),
-              ComicGrid(homeModel!.recommended),
-              SliverToBoxAdapter(child: RankPageView(homeModel!)),
-              HomeGroupTitle(title: "最近更新"),
-              ComicGrid(homeModel!.recentUpdates),
-              HomeGroupTitle(title: "最新上架"),
-              ComicGrid(homeModel!.latestReleases),
-            ],
+      bottomNavigationBar: BottomNavigationBar(
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "首页"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.library_books),
+            label: "资料库",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: "排行榜"),
+        ],
+        type: BottomNavigationBarType.fixed,
+        currentIndex: currentIndex,
+        onTap: (index) {
+          if (index == currentIndex) return;
+          controller.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
           );
         },
       ),
