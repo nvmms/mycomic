@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/home_model.dart';
 import 'package:mycomic/domain/rank_model.dart';
+import 'package:mycomic/page/comic_detail_page.dart';
 
 class RankPageView extends StatefulWidget {
   const RankPageView(this.home, {super.key});
@@ -85,40 +87,43 @@ class _RankTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 30,
-            child: Text(
-              '$rank',
-              style: TextStyle(
-                color: rank <= 3 ? colorScheme.primary : colorScheme.outline,
-                fontWeight: rank <= 3 ? FontWeight.bold : FontWeight.normal,
+      child: InkWell(
+        onTap: () => AppNavigator.startCoimcDetail(item.url),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 30,
+              child: Text(
+                '$rank',
+                style: TextStyle(
+                  color: rank <= 3 ? colorScheme.primary : colorScheme.outline,
+                  fontWeight: rank <= 3 ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-          if (item.chapter.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Text(
-              item.chapter,
-              style: TextStyle(color: colorScheme.primary, fontSize: 12),
-            ),
+            if (item.chapter.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(
+                item.chapter,
+                style: TextStyle(color: colorScheme.primary, fontSize: 12),
+              ),
+            ],
+            if (item.date.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(
+                item.date,
+                style: TextStyle(color: colorScheme.outline, fontSize: 12),
+              ),
+            ],
           ],
-          if (item.date.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Text(
-              item.date,
-              style: TextStyle(color: colorScheme.outline, fontSize: 12),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
