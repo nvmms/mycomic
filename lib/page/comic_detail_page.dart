@@ -120,7 +120,7 @@ class _DetailBody extends StatelessWidget {
             itemBuilder: (context, index) {
               final comic = detail.recommendations[index];
               return InkWell(
-                onTap: () => AppNavigator.startCoimcDetail(comic.url),
+                onTap: () => AppNavigator.startComicDetail(context, comic.url),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -166,9 +166,9 @@ class _DetailBody extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .72,
+          height: MediaQuery.sizeOf(sheetContext).height * .72,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -196,8 +196,9 @@ class _DetailBody extends StatelessWidget {
                   itemBuilder: (context, index) => _ChapterButton(
                     title: chapters[index].title,
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(sheetContext);
                       AppNavigator.startComicPlay(
+                        context,
                         chapters[index].url,
                         title,
                         group,
@@ -388,6 +389,7 @@ class _ChapterGroupPreview extends StatelessWidget {
               return _ChapterButton(
                 title: visibleChapters[index].title,
                 onPressed: () => AppNavigator.startComicPlay(
+                  context,
                   visibleChapters[index].url,
                   title,
                   group,

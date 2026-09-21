@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/home_model.dart';
 import 'package:mycomic/domain/rank_model.dart';
-import 'package:mycomic/page/comic_detail_page.dart';
 
 class RankPageView extends StatefulWidget {
   const RankPageView(this.home, {super.key});
@@ -88,7 +87,7 @@ class _RankTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: InkWell(
-        onTap: () => AppNavigator.startCoimcDetail(item.url),
+        onTap: () => AppNavigator.startComicDetail(context, item.url),
         child: Row(
           children: [
             SizedBox(

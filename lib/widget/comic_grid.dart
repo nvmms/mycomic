@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/comic_model.dart';
-import 'package:mycomic/page/comic_detail_page.dart';
 import 'package:mycomic/widget/my_comic_image.dart';
 
 class ComicGrid extends StatelessWidget {
@@ -23,7 +22,7 @@ class ComicGrid extends StatelessWidget {
         itemBuilder: (context, index) => GestureDetector(
           onTap: () {
             debugPrint(items[index].url);
-            AppNavigator.startCoimcDetail(items[index].url);
+            AppNavigator.startComicDetail(context, items[index].url);
           },
           child: Column(
             children: [

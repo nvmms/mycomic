@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/home_model.dart';
 import 'package:mycomic/service/api.dart';
 import 'package:mycomic/widget/comic_grid.dart';
@@ -26,7 +25,6 @@ class _HomeTabViewState extends State<HomeTabView> {
 
   @override
   Widget build(BuildContext context) {
-    AppNavigator.context = context;
     return Scaffold(
       appBar: AppBar(
         title: Text.rich(
