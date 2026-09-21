@@ -131,6 +131,12 @@ class _DetailBody extends StatelessWidget {
             final chapters = group.chapters.reversed.toList();
             return _ChapterGroupPreview(
               group: ComicChapterGroup(title: group.title, chapters: chapters),
+              readChapterUrls: {
+                ...?historyRecord?.readChapterUrls,
+                if (historyRecord?.chapterUrl case final url?
+                    when url.isNotEmpty)
+                  url,
+              },
               onShowAll: () => _showAllChapters(
                 context,
                 group.title,
@@ -269,6 +275,13 @@ class _DetailBody extends StatelessWidget {
                             ),
                         itemBuilder: (context, index) => _ChapterButton(
                           title: visibleChapters[index].title,
+                          isRead:
+                              historyRecord?.readChapterUrls.contains(
+                                    visibleChapters[index].url,
+                                  ) ==
+                                  true ||
+                              historyRecord?.chapterUrl ==
+                                  visibleChapters[index].url,
                           onPressed: () async {
                             final chapter = visibleChapters[index];
                             Navigator.pop(sheetContext);
@@ -402,6 +415,7 @@ class _ComicMetadata extends StatelessWidget {
 
 class _ChapterGroupPreview extends StatelessWidget {
   final ComicChapterGroup group;
+  final Set<String> readChapterUrls;
   final VoidCallback onShowAll;
   final String title;
   final String comicUrl;
@@ -410,6 +424,7 @@ class _ChapterGroupPreview extends StatelessWidget {
 
   const _ChapterGroupPreview({
     required this.group,
+    required this.readChapterUrls,
     required this.onShowAll,
     required this.title,
     required this.comicUrl,
@@ -455,6 +470,7 @@ class _ChapterGroupPreview extends StatelessWidget {
               }
               return _ChapterButton(
                 title: visibleChapters[index].title,
+                isRead: readChapterUrls.contains(visibleChapters[index].url),
                 onPressed: () async {
                   await AppNavigator.startComicPlay(
                     context,
@@ -478,27 +494,82 @@ class _ChapterGroupPreview extends StatelessWidget {
 class _ChapterButton extends StatelessWidget {
   final String title;
   final VoidCallback onPressed;
+  final bool isRead;
 
-  const _ChapterButton({required this.title, required this.onPressed});
+  const _ChapterButton({
+    required this.title,
+    required this.onPressed,
+    this.isRead = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        foregroundColor: const Color(0xff444444),
-        side: const BorderSide(color: Color(0xffededed)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-      ),
-      child: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              foregroundColor: const Color(0xff444444),
+              side: const BorderSide(color: Color(0xffededed)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
+        if (isRead)
+          const Positioned(
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(child: _ReadChapterMark()),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReadChapterMark extends StatelessWidget {
+  const _ReadChapterMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 19,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          ClipPath(
+            clipper: _BottomRightTriangleClipper(),
+            child: const ColoredBox(color: Color(0xff22a447)),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(right: 1, bottom: 1),
+            child: Icon(Icons.check, size: 11, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _BottomRightTriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(size.width, 0)
+    ..lineTo(size.width, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+
+  @override
+  bool shouldReclip(_BottomRightTriangleClipper oldClipper) => false;
 }
 
 class _ComicHeader extends StatelessWidget {

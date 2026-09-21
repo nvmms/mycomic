@@ -76,6 +76,7 @@ class _ComicPlayPage extends State<ComicPlayPage> {
             comicUrl: widget.comicUrl,
             chapterTitle: _chapterTitle(url, chapter.chapterTitle),
             chapterUrl: url,
+            readChapterUrls: [url],
             updatedAt: DateTime.now().millisecondsSinceEpoch,
           ),
         );

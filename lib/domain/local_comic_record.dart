@@ -6,6 +6,7 @@ class LocalComicRecord {
     required this.updatedAt,
     this.chapterTitle = '',
     this.chapterUrl = '',
+    this.readChapterUrls = const [],
   });
 
   final String title;
@@ -14,6 +15,7 @@ class LocalComicRecord {
   final int updatedAt;
   final String chapterTitle;
   final String chapterUrl;
+  final List<String> readChapterUrls;
 
   factory LocalComicRecord.fromMap(Map<String, dynamic> map) {
     return LocalComicRecord(
@@ -23,6 +25,9 @@ class LocalComicRecord {
       updatedAt: map['updatedAt'] as int? ?? 0,
       chapterTitle: map['chapterTitle'] as String? ?? '',
       chapterUrl: map['chapterUrl'] as String? ?? '',
+      readChapterUrls: (map['readChapterUrls'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
     );
   }
 
@@ -33,5 +38,6 @@ class LocalComicRecord {
     'updatedAt': updatedAt,
     'chapterTitle': chapterTitle,
     'chapterUrl': chapterUrl,
+    'readChapterUrls': readChapterUrls,
   };
 }

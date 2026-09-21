@@ -32,8 +32,31 @@ abstract final class ComicLibrary {
 
   static Future<void> addHistory(LocalComicRecord comic) async {
     final items = await history();
-    items.removeWhere((item) => item.comicUrl == comic.comicUrl);
-    items.insert(0, comic);
+    final readChapterUrls = <String>{...comic.readChapterUrls};
+    final oldIndex = items.indexWhere(
+      (item) => item.comicUrl == comic.comicUrl,
+    );
+    if (oldIndex >= 0) {
+      final oldRecord = items.removeAt(oldIndex);
+      readChapterUrls
+        ..addAll(oldRecord.readChapterUrls)
+        ..add(oldRecord.chapterUrl);
+    }
+    readChapterUrls.add(comic.chapterUrl);
+    items.insert(
+      0,
+      LocalComicRecord(
+        title: comic.title,
+        cover: comic.cover,
+        comicUrl: comic.comicUrl,
+        updatedAt: comic.updatedAt,
+        chapterTitle: comic.chapterTitle,
+        chapterUrl: comic.chapterUrl,
+        readChapterUrls: readChapterUrls
+            .where((url) => url.isNotEmpty)
+            .toList(),
+      ),
+    );
     if (items.length > _historyLimit) {
       items.removeRange(_historyLimit, items.length);
     }
