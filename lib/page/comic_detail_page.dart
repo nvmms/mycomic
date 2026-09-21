@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mycomic/core/app_navigator.dart';
 import 'package:mycomic/domain/comic_detail_model.dart';
 import 'package:mycomic/service/api.dart';
@@ -91,7 +90,14 @@ class _DetailBody extends StatelessWidget {
               group: ComicChapterGroup(title: group.title, chapters: chapters),
               ascending: ascending,
               onSort: () => onSort(index),
-              onShowAll: () => _showAllChapters(context, group.title, chapters),
+              onShowAll: () => _showAllChapters(
+                context,
+                group.title,
+                chapters,
+                detail.title,
+                group,
+              ),
+              title: detail.title,
             );
           }),
         if (detail.recommendations.isNotEmpty) ...[
@@ -152,6 +158,8 @@ class _DetailBody extends StatelessWidget {
     BuildContext context,
     String groupTitle,
     List<ComicChapter> chapters,
+    String title,
+    ComicChapterGroup group,
   ) {
     showModalBottomSheet<void>(
       context: context,
@@ -187,7 +195,14 @@ class _DetailBody extends StatelessWidget {
                   ),
                   itemBuilder: (context, index) => _ChapterButton(
                     title: chapters[index].title,
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pop(context);
+                      AppNavigator.startComicPlay(
+                        chapters[index].url,
+                        title,
+                        group,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -308,12 +323,14 @@ class _ChapterGroupPreview extends StatelessWidget {
   final bool ascending;
   final VoidCallback onSort;
   final VoidCallback onShowAll;
+  final String title;
 
   const _ChapterGroupPreview({
     required this.group,
     required this.ascending,
     required this.onSort,
     required this.onShowAll,
+    required this.title,
   });
 
   @override
@@ -370,7 +387,11 @@ class _ChapterGroupPreview extends StatelessWidget {
               }
               return _ChapterButton(
                 title: visibleChapters[index].title,
-                onPressed: () {},
+                onPressed: () => AppNavigator.startComicPlay(
+                  visibleChapters[index].url,
+                  title,
+                  group,
+                ),
               );
             },
           ),

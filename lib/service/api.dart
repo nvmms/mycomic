@@ -2,9 +2,22 @@ import 'dart:isolate';
 
 import 'package:mycomic/domain/home_model.dart';
 import 'package:mycomic/domain/comic_detail_model.dart';
+import 'package:mycomic/domain/comic_play_model.dart';
 import 'package:mycomic/service/webview_loader.dart';
 
 abstract final class Api {
+  static Future<ComicPlayModel> comicPlay(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw const FormatException('章节地址无效');
+    }
+    final html = await WebViewLoader.instance.load(
+      uri: uri,
+      waitForSelector: 'img.page',
+    );
+    return Isolate.run(() => ComicPlayModel.fromHtml(html));
+  }
+
   static Future<ComicDetailModel> comicDetail(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
