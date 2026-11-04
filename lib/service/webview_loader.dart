@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// 复用同一个 WebViewController，串行加载需要 JavaScript 渲染的页面。
@@ -26,6 +27,8 @@ final class WebViewLoader {
   static final WebViewLoader instance = WebViewLoader._();
 
   late final WebViewController _controller;
+  WebViewController get controller => _controller;
+  final ValueNotifier<bool> verificationRequired = ValueNotifier(false);
   Future<void> _queue = Future<void>.value();
   _LoadTask? _activeTask;
 
@@ -53,10 +56,21 @@ final class WebViewLoader {
   }) async {
     final task = _LoadTask(waitForSelector: waitForSelector);
     _activeTask = task;
+    final elapsed = Stopwatch()..start();
+    final timer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (verificationRequired.value) {
+        elapsed.stop();
+      } else {
+        elapsed.start();
+      }
+      if (elapsed.elapsed >= timeout && !task.completer.isCompleted) {
+        task.completer.completeError(TimeoutException('加载页面超时：$uri', timeout));
+      }
+    });
 
     try {
       await _controller.loadRequest(uri);
-      return await task.completer.future.timeout(timeout);
+      return await task.completer.future;
     } on TimeoutException {
       try {
         await _controller.runJavaScript('window.stop();');
@@ -65,8 +79,10 @@ final class WebViewLoader {
       }
       throw TimeoutException('加载页面超时：$uri', timeout);
     } finally {
+      timer.cancel();
       if (identical(_activeTask, task)) {
         _activeTask = null;
+        verificationRequired.value = false;
       }
     }
   }
@@ -81,6 +97,7 @@ final class WebViewLoader {
 
     try {
       await _waitUntilReady(task);
+      if (!identical(_activeTask, task) || task.completer.isCompleted) return;
 
       final result = await _controller.runJavaScriptReturningResult(
         _extractContentJavaScript,
@@ -98,18 +115,45 @@ final class WebViewLoader {
 
   Future<void> _waitUntilReady(_LoadTask task) async {
     final selector = task.waitForSelector;
-    if (selector == null) return;
+    final encodedSelector = jsonEncode(
+      selector ?? '[class*="[grid-area:main]"]',
+    );
+    final elapsed = Stopwatch()..start();
 
-    final encodedSelector = jsonEncode(selector);
-    final deadline = DateTime.now().add(const Duration(seconds: 15));
-
-    while (DateTime.now().isBefore(deadline)) {
+    while (elapsed.elapsed < const Duration(seconds: 15)) {
       if (!identical(_activeTask, task) || task.completer.isCompleted) return;
 
-      final result = await _controller.runJavaScriptReturningResult(
-        "document.querySelector($encodedSelector) ? 'ready' : 'waiting'",
-      );
-      if (_decodeJavaScriptResult(result) == 'ready') return;
+      String state;
+      try {
+        final result = await _controller.runJavaScriptReturningResult('''
+          (() => {
+            const challenge = document.querySelector(
+              '#challenge-running, #challenge-stage, #challenge-form, '
+              + 'iframe[src*="challenges.cloudflare.com"], .cf-turnstile'
+            ) || /just a moment|attention required.*cloudflare/i.test(document.title)
+              || /verify you are human|verifying you are human|验证您是人类|确认您是真人/i.test(document.body?.innerText ?? '');
+            if (challenge) return 'challenge';
+            return document.querySelector($encodedSelector) ? 'ready' : 'waiting';
+          })()
+        ''');
+        state = _decodeJavaScriptResult(result);
+      } catch (_) {
+        // 验证通过后的跳转可能暂时销毁 JavaScript 上下文，继续等待新页面。
+        elapsed.start();
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        continue;
+      }
+      if (!identical(_activeTask, task) || task.completer.isCompleted) return;
+      if (state == 'challenge') {
+        verificationRequired.value = true;
+        elapsed.stop();
+      } else {
+        elapsed.start();
+        if (state == 'ready') {
+          verificationRequired.value = false;
+          return;
+        }
+      }
 
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
